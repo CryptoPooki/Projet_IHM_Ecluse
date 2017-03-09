@@ -18,9 +18,7 @@ SOURCES += main.cpp\
     Modèle/Signal.cpp \
     Vue/MainWindow.cpp \
     Modèle/Ecluse.cpp \
-    Modèle/Alarmable.cpp \
-    Controleur/tache.cpp \
-    Controleur/Slot.cpp
+    Modèle/Alarmable.cpp
 
 HEADERS  += \
     Modèle/Porte.h \
@@ -28,9 +26,7 @@ HEADERS  += \
     Modèle/Signal.h \
     Vue/MainWindow.h \
     Modèle/Ecluse.h \
-    Modèle/Alarmable.h \
-    Controleur/tache.h \
-    Controleur/Slot.h
+    Modèle/Alarmable.h
 
 FORMS    += \
     MainWindow.ui
