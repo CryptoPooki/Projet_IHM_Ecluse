@@ -5,8 +5,6 @@
 #include "Modèle/Porte.h"
 #include "Modèle/Vanne.h"
 #include "Modèle/Signal.h"
-#include "Controleur/Slot.h"
-
 namespace Ui {
 class MainWindow;
 }
