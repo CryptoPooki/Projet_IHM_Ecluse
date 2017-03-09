@@ -16,17 +16,13 @@ SOURCES += main.cpp\
     Modèle/Porte.cpp \
     Modèle/Vanne.cpp \
     Modèle/Signal.cpp \
-    Vue/MainWindow.cpp \
-    Modèle/Ecluse.cpp \
-    Modèle/Alarmable.cpp
+    Vue/MainWindow.cpp
 
 HEADERS  += \
     Modèle/Porte.h \
     Modèle/Vanne.h \
     Modèle/Signal.h \
-    Vue/MainWindow.h \
-    Modèle/Ecluse.h \
-    Modèle/Alarmable.h
+    Vue/MainWindow.h
 
 FORMS    += \
     MainWindow.ui

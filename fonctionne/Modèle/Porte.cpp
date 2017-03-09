@@ -67,7 +67,7 @@ void Porte::opening(int percent)
 //Renvoie des états
 void Porte::show_state(int i,int id)
 {
-    if (!id == Porteid) // cette porte n'est pas concernée
+    if (id != Porteid) // cette porte n'est pas concernée
         return ;
     bool state[4] = {is_open, emergency_status, breakdown_status, alarm_status};
     if ( i == 0 ) // demande d'ouverture
@@ -133,7 +133,7 @@ void Porte::update_close_door()
 // On peut ouvrir et fermer les portes à tout moment (même lors d'une transition)
 void Porte::door_change_state(int state, int id )
 {
-    if(!id==Porteid)
+    if(id != Porteid)
         return;
     if(timer != 0)
     {

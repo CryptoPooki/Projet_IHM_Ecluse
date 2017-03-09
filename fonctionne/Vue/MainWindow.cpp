@@ -1,13 +1,13 @@
+//Bibliothèques nécessaires
 #include "Vue/MainWindow.h"
 #include "ui_MainWindow.h"
-
-
 #include <iostream>
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
-    //Setup total
+    //Setup
     ui->setupUi(this);
     //Initialisation
     ui->Fermer_Porte_amont->setChecked(true);
@@ -17,7 +17,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->Feu_aval_rouge->setChecked(true);
     ui->Feu_amont_rouge->setChecked(true);
     emergency_status = false;
-
     //Partie Etat
     ui->Panne_Porte_amont->hide();
     ui->Panne_Porte_aval->hide();
@@ -36,7 +35,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->Porte_amont->hide();
     ui->Porte_aval->hide();
     ui->Panne_globale->hide();
-
     //Partie Commandes
     ui->Fermer_Vanne_remplissage->hide();
     ui->Fermer_Vanne_vidage->hide();
@@ -56,22 +54,16 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->Ouvrir_Porte_aval->setText("");
     ui->Arret_Porte_Amont->hide();
     ui->Arret_Porte_Aval->hide();
-
-
     //Partie annexe
     ui->Saisie_ID->show();
     ui->Saisie_MdP->show();
     ui->MdP->show();
     ui->ID->show();
-
     //MAJ mode
     mode_auto = true;
     ui->De_connexion->setText("Connexion");
 
     //Création de pointeurs vers les objets du modèle
-
-
-    //Ecluse* ecluse = new Ecluse();
     vanne_remplissage = new Vanne(1);
     vanne_vidage = new Vanne(0);
     porte_amont = new Porte(0);
@@ -842,7 +834,7 @@ void MainWindow::open_vanne(int state,int id)
     std::cout << "iciiii "<< std::endl;
 }
 
-void MainWindow::close_vanne(int state,int id)
+void MainWindow::close_vanne(int state)
 {
     if (state == 0 )
         std::cout << "tout a bien marché" << std::endl;

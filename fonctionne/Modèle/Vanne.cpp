@@ -28,7 +28,7 @@ void Vanne::run()
 //Renvoie des états
 void Vanne::show_state(int i,int id)
 {
-    if (!id == Vanneid) // cette porte n'est pas concernée
+    if (id != Vanneid) // cette porte n'est pas concernée
         return ;
     std::cout << "je suis là"<< std::endl;
     bool state[4] = {is_open, emergency_status, breakdown_status, alarm_status};
@@ -87,7 +87,7 @@ void Vanne::update_close_vanne()
 void Vanne::vanne_change_state(int state, int id )
 {
 
-    if(!id==Vanneid)
+    if(id!=Vanneid)
         return;
     is_open = !is_open;
 
