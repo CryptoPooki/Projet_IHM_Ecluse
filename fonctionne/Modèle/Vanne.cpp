@@ -68,13 +68,6 @@ void Vanne::vanne_change_state(int state, int id )
         connect(timer, SIGNAL(timeout()), this, SLOT(update_close_vanne()));
     }
     timer->start(1000);
-
-    /*
-    if(state == 0)
-        emit open_vanne_sig(1,id);
-    else if (state == 1)
-        emit close_vanne_sig(0,id);
-        */
 }
 
 void Vanne::update_open_vanne()

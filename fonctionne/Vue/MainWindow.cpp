@@ -150,13 +150,13 @@ MainWindow::MainWindow(QWidget* parent) :
     connect(vanne_remplissage,SIGNAL(open_vanne_sig(int,int)), this, SLOT(open_vanne(int,int))  );
 
     connect(vanne_remplissage,SIGNAL(show_state_close_vanne_sig(bool*,int)), this, SLOT(control_close_vanne(bool*,int))  );
-    connect(vanne_remplissage,SIGNAL(close_vanne_sig(int,int)), this, SLOT(close_vanne(int,int))  );
+    connect(vanne_remplissage,SIGNAL(close_vanne_sig(int,int)), this, SLOT(close_vanne(int))  );
 
     connect(vanne_vidage,SIGNAL(show_state_open_vanne_sig(bool*,int)), this, SLOT(control_open_vanne(bool*,int))  );
     connect(vanne_vidage,SIGNAL(open_vanne_sig(int,int)), this, SLOT(open_vanne(int,int)) );
 
     connect(vanne_vidage,SIGNAL(show_state_close_vanne_sig(bool*,int)), this, SLOT(control_close_vanne(bool*,int))  );
-    connect(vanne_vidage,SIGNAL(close_vanne_sig(int,int)), this, SLOT(close_vanne(int,int)) );
+    connect(vanne_vidage,SIGNAL(close_vanne_sig(int,int)), this, SLOT(close_vanne(int)) );
 
     //Mode de fonctionnement
     QObject::connect(ui->De_connexion, SIGNAL(clicked(bool)), this, SLOT(change_mode()));
@@ -219,7 +219,6 @@ void MainWindow::on_Ouvrir_Porte_amont_clicked()
     {
         ui->Ouvrir_Vanne_remplissage->setChecked(false);
         ui->Ouvrir_Vanne_vidage->setChecked(false);
-//        ui->Ouvrir_Porte_amont->setChecked(false);
         std::cout << " entre porte amont clicked" << std::endl;
         if(niveau_eau == 1) // on peut rien faire
             return; // faire un pop-up
@@ -239,7 +238,6 @@ void MainWindow::on_Ouvrir_Porte_amont_clicked()
                 ui->Ouvrir_Porte_aval->setChecked(false);
                 block_interface();
             }
-//            ui->Ouvrir_Porte_aval->setChecked(true);
             mode_auto = true;
         }
         else if(niveau_eau == 2)
@@ -257,7 +255,6 @@ void MainWindow::on_Ouvrir_Porte_amont_clicked()
                 ui->Ouvrir_Porte_aval->setChecked(false);
                 block_interface();
             }
-//            ui->Ouvrir_Porte_amont->setChecked(true);
             mode_auto = true;
         }
     }
@@ -319,7 +316,6 @@ void MainWindow::on_Ouvrir_Porte_aval_clicked()
     {
         ui->Ouvrir_Vanne_remplissage->setChecked(false);
         ui->Ouvrir_Vanne_vidage->setChecked(false);
-//        ui->Ouvrir_Porte_aval->setChecked(false);
         std::cout << " mode auto " << std::endl;
         if(niveau_eau == 1) // on peut rien faire
         {
@@ -328,11 +324,10 @@ void MainWindow::on_Ouvrir_Porte_aval_clicked()
         }
         else if (niveau_eau == 0) // en bas -> ouvrir la porte d'en-bas
         {
-            std::cout << " en-bas " << std::endl;
             mode_auto = false;
             if (porte_aval_stat == 1 || porte_aval_stat == 3)
             {
-                std::cout << "Porte déjà ouverte yayaya" << std::endl;
+                std::cout << "Porte déjà ouverte" << std::endl;
                 unblock_interface(); // pb pas ici
                 ui->Ouvrir_Porte_amont->setChecked(false);
             }
@@ -342,7 +337,6 @@ void MainWindow::on_Ouvrir_Porte_aval_clicked()
                 ui->Ouvrir_Porte_amont->setChecked(false);
                 block_interface();
             }
-//            ui->Ouvrir_Porte_aval->setChecked(true);
             mode_auto = true;
         }
         else if(niveau_eau == 2)
@@ -360,7 +354,6 @@ void MainWindow::on_Ouvrir_Porte_aval_clicked()
                 ui->Ouvrir_Porte_amont->setChecked(false);
                 block_interface();
             }
-//            ui->Ouvrir_Porte_amont->setChecked(true);
             mode_auto = true;
         }
     }
@@ -425,7 +418,6 @@ void MainWindow::on_Ouvrir_Vanne_remplissage_clicked()
         vanne_vidage_stat = 0;
         ui->Ouvrir_Porte_aval->setChecked(false);
         ui->Ouvrir_Porte_amont->setChecked(false);
-        std::cout << " mode auto remplissage" << std::endl;
         if(niveau_eau == 1) // on peut rien faire
         {
             std::cout << " milieu " << std::endl;
@@ -436,7 +428,6 @@ void MainWindow::on_Ouvrir_Vanne_remplissage_clicked()
             std::cout << " en-bas " << std::endl;
             on_Feu_aval_rouge_clicked();
             ui->Feu_aval_rouge->setChecked(true);
-            std::cout << "je suis là " << std::endl;
             on_Fermer_Porte_aval_clicked();
             block_interface();
         }
@@ -487,7 +478,6 @@ void MainWindow::on_Ouvrir_Vanne_vidage_clicked()
         vanne_remplissage_stat = 0;
         ui->Ouvrir_Porte_aval->setChecked(false);
         ui->Ouvrir_Porte_amont->setChecked(false);
-        std::cout << " mode auto " << std::endl;
         if(niveau_eau == 1) // on peut rien faire
             return; // faire un pop-up
         else if (niveau_eau == 0) // en bas -> ouvrir la porte d'en-bas
@@ -501,7 +491,6 @@ void MainWindow::on_Ouvrir_Vanne_vidage_clicked()
             ui->Feu_amont_rouge->setChecked(true);
             on_Fermer_Porte_amont_clicked();
             block_interface();
-            std::cout << "je bloque tout" << std::endl;
         }
     }
     else
@@ -518,7 +507,6 @@ void MainWindow::on_Ouvrir_Vanne_vidage_clicked()
             ui->Ouvrir_Vanne_vidage->setChecked(true);
             return ;
         }
-        std::cout << "je vais fiaree" << std::endl;
         emit show_state_vanne_sig(0,0);
         ui->Transition_Vanne_vidage->setChecked(true);
     }
@@ -588,6 +576,8 @@ void MainWindow::on_Feu_aval_vert_clicked()
     ui->Feu_aval_rouge->setChecked(false);
 }
 
+
+
 //Partie annexe
 void MainWindow::on_URGENCE_clicked()
 {
@@ -647,7 +637,6 @@ void MainWindow::on_URGENCE_clicked()
 
 void MainWindow::control_open_door(bool * status, int porte)
 {
-    std::cout << QString::number(porte).toStdString() << std::endl;
     if( status[1])
     {
         std::cout << "emergency" << std::endl;
@@ -690,7 +679,6 @@ void MainWindow::control_open_door(bool * status, int porte)
             ui->Transition_Porte_amont->setChecked(true);
             ui->Arret_Porte_Amont->setChecked(false);
             porte_amont_stat = 3;
-            std::cout << "controle_open_door emet" << std::endl;
             emit change_door_sig(0,porte);
         }
         else
@@ -699,7 +687,6 @@ void MainWindow::control_open_door(bool * status, int porte)
             ui->Transition_Porte_aval->setChecked(true);
             ui->Arret_Porte_Aval->setChecked(false);
             porte_aval_stat = 3;
-            std::cout << "controle_open_door emet" << std::endl;
             emit change_door_sig(0,porte);
         }
     }
@@ -747,7 +734,6 @@ void MainWindow::control_close_door(bool * status,int porte)
             ui->Arret_Porte_Amont->setChecked(false);
             ui->Transition_Porte_amont->setChecked(true);
             porte_amont_stat = 2;
-            std::cout << "controle_open_door emet" << std::endl;
             emit change_door_sig(1,porte);
         }
         else
@@ -756,7 +742,6 @@ void MainWindow::control_close_door(bool * status,int porte)
             ui->Arret_Porte_Aval->setChecked(false);
             ui->Transition_Porte_aval->setChecked(true);
             porte_aval_stat = 2;
-            std::cout << "controle_open_door emet" << std::endl;
             emit change_door_sig(1,porte);
         }
     }
@@ -795,7 +780,6 @@ void MainWindow::open_door(int state,int id)
 
 void MainWindow::close_door(int state, int id)
 {
-    std::cout << "fermeture porte finalisée" << std::endl;
     if (id == 0)
     {
         ui->Transition_Porte_amont->setChecked(false);
@@ -953,12 +937,10 @@ void MainWindow::control_open_vanne(bool * status, int vanne)
     }
     else
     {
-        std::cout << "vanne change" << std::endl;
         if (vanne == 1 ) // remplissage
         {
             ui->Fermer_Vanne_remplissage->setChecked(false);
             vanne_remplissage_stat = 1;
-            std::cout << "controle_open_door emet" << std::endl;
             transit_vanne_remplissage = 1;
             emit change_vanne_sig(0,vanne);
         }
@@ -966,7 +948,6 @@ void MainWindow::control_open_vanne(bool * status, int vanne)
         {
             ui->Fermer_Vanne_vidage->setChecked(false);
             vanne_vidage_stat = 1;
-            std::cout << "controle_open_door emet" << std::endl;
             transit_vanne_vidage = 1;
             emit change_vanne_sig(0,vanne);
         }
@@ -992,7 +973,6 @@ void MainWindow::open_vanne(int state,int id)
         transit_vanne_remplissage = 0;
         vanne_vidage->transition = 100;
         ui->Transition_Vanne_remplissage->setChecked(false);
-        std::cout << "je sais pas ?fsd??? "<< std::endl;
     }
     else
     {
@@ -1000,11 +980,9 @@ void MainWindow::open_vanne(int state,int id)
         transit_vanne_vidage = 0;
         vanne_remplissage->transition = 100;
         ui->Transition_Vanne_vidage->setChecked(false);
-        std::cout << "je sais pas ???? "<< std::endl;
     }
     if (mode_auto)
         unblock_interface();
-    std::cout << "iciiii "<< std::endl;
 }
 
 void MainWindow::close_vanne(int state)
@@ -1055,14 +1033,12 @@ void MainWindow::control_close_vanne(bool * status,int vanne)
         {
             ui->Ouvrir_Vanne_remplissage->setChecked(false);
             vanne_remplissage_stat = 0;
-            std::cout << "controle_close_vanne emet" << std::endl;
             emit change_vanne_sig(0,vanne);
         }
         else
         {
             ui->Ouvrir_Vanne_vidage->setChecked(false);
             vanne_vidage_stat = 0;
-            std::cout << "controle_close_vanne emet" << std::endl;
             emit change_vanne_sig(0,vanne);
         }
     }
@@ -1112,6 +1088,8 @@ void MainWindow::change_mode()
             ui->Fermer_Porte_aval->show();
             ui->Ouvrir_Porte_amont->setText("Ouvert");
             ui->Ouvrir_Porte_aval->setText("Ouvert");
+            ui->Arret_Porte_Amont->show();
+            ui->Arret_Porte_Aval->show();
             if (!emergency_status)
             {
                 ui->Feu_amont_rouge->setEnabled(true);

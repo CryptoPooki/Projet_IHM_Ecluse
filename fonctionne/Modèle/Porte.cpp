@@ -3,6 +3,7 @@
 #include <QEventLoop>
 #include <QMainWindow>
 #include <QBasicTimer>
+#include <iostream>
 
 //////////////////////////////////////////    Méthodes    ////////////////////////////////////////////////
 //Constructeur
@@ -115,7 +116,7 @@ void Porte::update_open_door() //Bug
     }
     else
     {
-        transition +=10;
+        transition -=10;
         emit control_door_sig(3,Porteid);
         emit position_sig(transition,Porteid);
     }
