@@ -3,12 +3,15 @@
 #include "ui_MainWindow.h"
 #include <iostream>
 
-MainWindow::MainWindow(QWidget *parent) :
+////////////////////////////////////////////////    Méthodes    //////////////////////////////////////////////////
+//Constructeur
+MainWindow::MainWindow(QWidget* parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
 {
     //Setup
     ui->setupUi(this);
+
     //Initialisation
     ui->Fermer_Porte_amont->setChecked(true);
     ui->Fermer_Porte_aval->setChecked(true);
@@ -35,6 +38,9 @@ MainWindow::MainWindow(QWidget *parent) :
     ui->Porte_amont->hide();
     ui->Porte_aval->hide();
     ui->Panne_globale->hide();
+    ui->Transition_Vanne_remplissage->hide();
+    ui->Transition_Vanne_vidage->hide();
+    ui->Barre_de_transition->setValue(100);
     //Partie Commandes
     ui->Fermer_Vanne_remplissage->hide();
     ui->Fermer_Vanne_vidage->hide();
@@ -156,10 +162,488 @@ MainWindow::MainWindow(QWidget *parent) :
     QObject::connect(ui->De_connexion, SIGNAL(clicked(bool)), this, SLOT(change_mode()));
 }
 
+//Destructeur
 MainWindow::~MainWindow()
 {
     delete ui;
 }
+
+////////////////////////////////////////////////    Slots    /////////////////////////////////////////////////////
+//Partie Etat
+void MainWindow::on_Panne_Vanne_remplissage_clicked()
+{
+    emit panne_vanne(1);                                    //Mettre la vanne en panne
+    on_URGENCE_clicked();                                   //Clic automatique sur le bouton état d'urgence car le comportement est le même
+    ui->Panne_globale->setChecked(true);                    //Allumage de l'indicateur de panne
+    ui->Panne_globale->setEnabled(true);                    //Rendre disponible le bouton pour réaliser une reprise sur panne
+}
+
+void MainWindow::on_Panne_Vanne_vidage_clicked()
+{
+    emit panne_vanne(0);
+    on_URGENCE_clicked();
+    ui->Panne_globale->setChecked(true);
+    ui->Panne_globale->setEnabled(true);
+}
+
+void MainWindow::on_Panne_Porte_aval_clicked()
+{
+    emit panne_porte(0);
+    on_URGENCE_clicked();
+    ui->Panne_globale->setChecked(true);
+    ui->Panne_globale->setEnabled(true);
+}
+
+void MainWindow::on_Panne_Porte_amont_clicked()
+{
+    emit panne_porte(1);
+    on_URGENCE_clicked();
+    ui->Panne_globale->setChecked(true);
+    ui->Panne_globale->setEnabled(true);
+}
+
+void MainWindow::on_Panne_globale_clicked()
+{
+    emit sortie_panne_sig();
+    on_URGENCE_clicked();
+    ui->Panne_Porte_amont->setChecked(false);
+    ui->Panne_Porte_aval->setChecked(false);
+    ui->Panne_Vanne_remplissage->setChecked(false);
+    ui->Panne_Vanne_vidage->setChecked(false);
+}
+
+//Partie Commandes
+void MainWindow::on_Ouvrir_Porte_amont_clicked()
+{
+    if (mode_auto)
+    {
+        ui->Ouvrir_Vanne_remplissage->setChecked(false);
+        ui->Ouvrir_Vanne_vidage->setChecked(false);
+//        ui->Ouvrir_Porte_amont->setChecked(false);
+        std::cout << " entre porte amont clicked" << std::endl;
+        if(niveau_eau == 1) // on peut rien faire
+            return; // faire un pop-up
+        else if (niveau_eau == 0) // en bas -> ouvrir la porte d'en-bas
+        {
+            std::cout << " en-bas " << std::endl;
+            mode_auto = false;
+            if (porte_aval_stat == 1 || porte_aval_stat == 3)
+            {
+                std::cout << "Porte déjà ouverte" << std::endl;
+                ui->Ouvrir_Porte_aval->setChecked(false);
+                unblock_interface(); // pb pas cii
+            }
+            else
+            {
+                on_Ouvrir_Porte_aval_clicked();
+                ui->Ouvrir_Porte_aval->setChecked(false);
+                block_interface();
+            }
+//            ui->Ouvrir_Porte_aval->setChecked(true);
+            mode_auto = true;
+        }
+        else if(niveau_eau == 2)
+        {
+            mode_auto = false;
+            if (porte_amont_stat == 1 || porte_amont_stat == 3)
+            {
+                std::cout << "Porte déjà ouverte" << std::endl;
+                ui->Ouvrir_Porte_aval->setChecked(false);// pb pas ici
+                unblock_interface();
+            }
+            else
+            {
+                on_Ouvrir_Porte_amont_clicked();
+                ui->Ouvrir_Porte_aval->setChecked(false);
+                block_interface();
+            }
+//            ui->Ouvrir_Porte_amont->setChecked(true);
+            mode_auto = true;
+        }
+    }
+    else
+    {
+        if( niveau_eau == 0 || niveau_eau == 1 || transit_vanne_remplissage || transit_vanne_vidage)
+        {
+            std::cout << "Niveau eau pas bon !!" << std::endl;
+            ui->Ouvrir_Porte_amont->setChecked(false);
+            ui->Fermer_Porte_amont->setChecked(true);
+            return;
+        }
+        if (porte_amont_stat == 1 || porte_amont_stat == 3)
+        {
+            std::cout << "Porte déjà ouverte" << std::endl;
+            ui->Ouvrir_Porte_amont->setChecked(true);
+            return ;
+        }
+
+        emit show_state_sig(0,0) ; // Ouverture
+    }
+
+}
+
+void MainWindow::on_Fermer_Porte_amont_clicked()
+{
+    if (porte_amont_stat == 0 || porte_amont_stat == 2)
+    {
+        std::cout << "Porte amont déjà fermée !" << std::endl;
+        ui->Fermer_Porte_amont->setChecked(true);
+        if(mode_auto)
+        {std::cout << "Porte amont déjà fermée !" << std::endl;
+            mode_auto=false;
+            on_Ouvrir_Vanne_vidage_clicked();
+            ui->Ouvrir_Vanne_vidage->setChecked(true);
+            mode_auto=true;
+            unblock_interface(); // pb pas ici
+        }
+        return ;
+    }
+
+    emit show_state_sig(1,0) ;
+}
+
+void MainWindow::on_Arret_Porte_Amont_clicked()
+{
+    if (porte_amont_stat == 4)
+    {
+        std::cout << "Porte déjà arrêtée" << std::endl;
+        ui->Arret_Porte_Amont->setChecked(true);
+        return ;
+    }
+    emit show_state_sig(2,0) ;
+}
+
+void MainWindow::on_Ouvrir_Porte_aval_clicked()
+{
+    if (mode_auto)
+    {
+        ui->Ouvrir_Vanne_remplissage->setChecked(false);
+        ui->Ouvrir_Vanne_vidage->setChecked(false);
+//        ui->Ouvrir_Porte_aval->setChecked(false);
+        std::cout << " mode auto " << std::endl;
+        if(niveau_eau == 1) // on peut rien faire
+        {
+            std::cout << " milieu " << std::endl;
+            return; // faire un pop-up
+        }
+        else if (niveau_eau == 0) // en bas -> ouvrir la porte d'en-bas
+        {
+            std::cout << " en-bas " << std::endl;
+            mode_auto = false;
+            if (porte_aval_stat == 1 || porte_aval_stat == 3)
+            {
+                std::cout << "Porte déjà ouverte yayaya" << std::endl;
+                unblock_interface(); // pb pas ici
+                ui->Ouvrir_Porte_amont->setChecked(false);
+            }
+            else
+            {
+                on_Ouvrir_Porte_aval_clicked();
+                ui->Ouvrir_Porte_amont->setChecked(false);
+                block_interface();
+            }
+//            ui->Ouvrir_Porte_aval->setChecked(true);
+            mode_auto = true;
+        }
+        else if(niveau_eau == 2)
+        {
+            mode_auto = false;
+            if (porte_amont_stat == 1 || porte_amont_stat == 3)
+            {
+                std::cout << "Porte déjà ouverte" << std::endl;
+                unblock_interface(); // pb pas ici
+                ui->Ouvrir_Porte_amont->setChecked(false);
+            }
+            else
+            {
+                on_Ouvrir_Porte_amont_clicked();
+                ui->Ouvrir_Porte_amont->setChecked(false);
+                block_interface();
+            }
+//            ui->Ouvrir_Porte_amont->setChecked(true);
+            mode_auto = true;
+        }
+    }
+    else
+    {
+        if(niveau_eau == 1 || niveau_eau == 2 || transit_vanne_remplissage || transit_vanne_vidage)
+        {
+            std::cout << "Niveau eau pas bon" << std::endl;
+            ui->Ouvrir_Porte_aval->setChecked(false);
+            ui->Fermer_Porte_aval->setChecked(true);
+            return;
+        }
+        if (porte_aval_stat == 1 || porte_aval_stat == 3)
+        {
+            std::cout << "Porte déjà ouverte" << std::endl;
+            ui->Ouvrir_Porte_aval->setChecked(true);
+            return ;
+        }
+
+        emit show_state_sig(0,1) ; // Ouverture
+    }
+}
+
+void MainWindow::on_Fermer_Porte_aval_clicked()
+{
+    if (porte_aval_stat == 0 || porte_aval_stat == 2)
+    {
+        std::cout << "Porte aval déjà fermée" << std::endl;
+        ui->Fermer_Porte_aval->setChecked(true);
+        if(mode_auto)
+        {
+            mode_auto=false;
+            on_Ouvrir_Vanne_remplissage_clicked();
+            ui->Ouvrir_Vanne_remplissage->setChecked(true);
+            mode_auto=true;
+            unblock_interface(); // pb pas ici
+        }
+        return ;
+    }
+    emit show_state_sig(1,1) ;
+}
+
+void MainWindow::on_Arret_Porte_Aval_clicked()
+{
+    if (porte_aval_stat == 4)
+    {
+        std::cout << "Porte déjà arrêtée" << std::endl;
+        ui->Arret_Porte_Aval->setChecked(true);
+        return ;
+    }
+    emit show_state_sig(2,1) ;
+}
+
+void MainWindow::on_Ouvrir_Vanne_remplissage_clicked()
+{
+    if(mode_auto)
+    {
+        ui->Ouvrir_Vanne_vidage->setChecked(false);
+        mode_auto = false;
+        on_Fermer_Vanne_vidage_clicked();
+        mode_auto = true;
+        vanne_vidage_stat = 0;
+        ui->Ouvrir_Porte_aval->setChecked(false);
+        ui->Ouvrir_Porte_amont->setChecked(false);
+        std::cout << " mode auto remplissage" << std::endl;
+        if(niveau_eau == 1) // on peut rien faire
+        {
+            std::cout << " milieu " << std::endl;
+            return; // faire un pop-up
+        }
+        else if (niveau_eau == 0) // en bas -> ouvrir la porte d'en-bas
+        {
+            std::cout << " en-bas " << std::endl;
+            on_Feu_aval_rouge_clicked();
+            ui->Feu_aval_rouge->setChecked(true);
+            std::cout << "je suis là " << std::endl;
+            on_Fermer_Porte_aval_clicked();
+            block_interface();
+        }
+        else if(niveau_eau == 2)
+        {
+            std::cout << "déjà en haut" << std::endl;
+            ui->Ouvrir_Vanne_remplissage->setChecked(true);
+        }
+    }
+    else
+    {
+        if(porte_aval_stat == 1 || porte_aval_stat== 3)
+        {
+            std::cout << "Porte aval ouverte !!" << std::endl;
+            ui->Ouvrir_Vanne_remplissage->setChecked(false);
+            return;
+        }
+        if(vanne_remplissage_stat == 1) // vanne open
+        {
+            std::cout << "Vanne déjà remplie" << std::endl;
+            ui->Ouvrir_Vanne_remplissage->setChecked(true);
+            return ;
+        }
+        ui->Transition_Vanne_remplissage->setChecked(true);
+        emit show_state_vanne_sig(0,1);
+    }
+}
+
+void MainWindow::on_Fermer_Vanne_remplissage_clicked()
+{
+    if(vanne_remplissage_stat == 0) // vanne fermée
+    {
+        std::cout << "Vanne déjà fermée" << std::endl;
+        ui->Fermer_Vanne_remplissage->setChecked(true);
+        return ;
+    }
+    emit show_state_vanne_sig(1,1); // demande de fermeture (1) de la vanne remplissage (2ème 1)
+}
+
+void MainWindow::on_Ouvrir_Vanne_vidage_clicked()
+{
+    if(mode_auto)
+    {
+        ui->Ouvrir_Vanne_remplissage->setChecked(false);
+        mode_auto = false;
+        on_Fermer_Vanne_remplissage_clicked();
+        mode_auto = true;
+        vanne_remplissage_stat = 0;
+        ui->Ouvrir_Porte_aval->setChecked(false);
+        ui->Ouvrir_Porte_amont->setChecked(false);
+        std::cout << " mode auto " << std::endl;
+        if(niveau_eau == 1) // on peut rien faire
+            return; // faire un pop-up
+        else if (niveau_eau == 0) // en bas -> ouvrir la porte d'en-bas
+        {
+            std::cout << "déjà en-bas " << std::endl;
+            ui->Ouvrir_Vanne_vidage->setChecked(true);
+        }
+        else if(niveau_eau == 2)
+        {
+            on_Feu_amont_rouge_clicked();
+            ui->Feu_amont_rouge->setChecked(true);
+            on_Fermer_Porte_amont_clicked();
+            block_interface();
+            std::cout << "je bloque tout" << std::endl;
+        }
+    }
+    else
+    {
+        if(porte_amont_stat == 1 || porte_amont_stat== 3)
+        {
+            std::cout << "Porte amont ouverte !!" << std::endl;
+            ui->Ouvrir_Vanne_vidage->setChecked(false);
+            return;
+        }
+        if(vanne_vidage_stat == 1) // vanne open
+        {
+            std::cout << "Vanne déjà remplie" << std::endl;
+            ui->Ouvrir_Vanne_vidage->setChecked(true);
+            return ;
+        }
+        std::cout << "je vais fiaree" << std::endl;
+        emit show_state_vanne_sig(0,0);
+        ui->Transition_Vanne_vidage->setChecked(true);
+    }
+
+}
+
+void MainWindow::on_Fermer_Vanne_vidage_clicked()
+{
+    if(vanne_vidage_stat == 0) // vanne fermée
+    {
+        std::cout << "Vanne déjà fermée" << std::endl;
+        ui->Fermer_Vanne_vidage->setChecked(true);
+        return ;
+    }
+    emit show_state_vanne_sig(1,0); // demande de fermeture (1) de la vanne remplissage (2ème 1)
+}
+
+void MainWindow::on_Feu_amont_vert_clicked()
+{
+    if(signal_amont_stat )
+    {
+        std::cout << "Feu amont déjà vert" << std::endl;
+        ui->Feu_amont_vert->setChecked(true);
+        return;
+    }
+    emit feu_vert(0);
+    signal_amont_stat = true;
+    ui->Feu_amont_rouge->setChecked(false);
+}
+
+void MainWindow::on_Feu_amont_rouge_clicked()
+{
+    if(!signal_amont_stat )
+    {
+        std::cout << "Feu amont déjà rouge" << std::endl;
+        ui->Feu_amont_rouge->setChecked(true);
+        return;
+    }
+    emit feu_rouge(0);
+    signal_amont_stat = false;
+    ui->Feu_amont_vert->setChecked(false);
+}
+
+void MainWindow::on_Feu_aval_rouge_clicked()
+{
+    if(!signal_aval_stat )
+    {
+        std::cout << "Feu aval déjà rouge" << std::endl;
+        ui->Feu_aval_rouge->setChecked(true);
+        return;
+    }
+    emit feu_rouge(1);
+    signal_aval_stat = false;
+    ui->Feu_aval_vert->setChecked(false);
+}
+
+void MainWindow::on_Feu_aval_vert_clicked()
+{
+    if(signal_aval_stat )
+    {
+        std::cout << "Feu aval déjà vert" << std::endl;
+        ui->Feu_aval_vert->setChecked(true);
+        return;
+    }
+    emit feu_vert(1);
+    signal_aval_stat = true;
+    ui->Feu_aval_rouge->setChecked(false);
+}
+
+//Partie annexe
+void MainWindow::on_URGENCE_clicked()
+{
+    emergency_status = !emergency_status;
+
+    if(emergency_status)
+    {
+        if (porte_aval_stat == 2 || porte_aval_stat == 3)
+        {
+            ui->Fermer_Porte_aval->setChecked((false));
+            ui->Ouvrir_Porte_aval->setChecked((false));
+            ui->Arret_Porte_Aval->setChecked((true));
+            porte_aval_stat = 4;
+        }
+        if (porte_amont_stat == 2 || porte_amont_stat == 3)
+        {
+            ui->Fermer_Porte_amont->setChecked((false));
+            ui->Ouvrir_Porte_amont->setChecked((false));
+            ui->Arret_Porte_Amont->setChecked((true));
+            porte_amont_stat = 4;
+        }
+
+        on_Fermer_Vanne_remplissage_clicked(); // fermeture vanne remplissage
+        ui->Fermer_Vanne_remplissage->setChecked(true);
+        on_Fermer_Vanne_vidage_clicked(); // fermeture vanne vidage
+        ui->Fermer_Vanne_vidage->setChecked(true);
+
+        on_Feu_amont_rouge_clicked();
+        on_Feu_aval_rouge_clicked();
+        ui->Feu_aval_vert->setChecked(false);
+        ui->Feu_aval_rouge->setChecked(true);
+        ui->Feu_amont_vert->setChecked(false);
+        ui->Feu_amont_rouge->setChecked(true);
+
+        QList<QWidget*> All = ui->centralWidget->findChildren<QWidget *>();
+        for (int i = 0 ; i < All.size(); i++)
+            All.at(i)->setDisabled(true);
+        ui->horizontalLayoutWidget->setEnabled(true);
+        ui->URGENCE->setEnabled(true);
+        ui->Saisie_ID->setEnabled(true);
+        ui->Saisie_MdP->setEnabled(true);
+        ui->De_connexion->setEnabled(true);
+
+    }
+    else if (!mode_auto)
+    {
+        QList<QWidget*> All = ui->centralWidget->findChildren<QWidget *>();
+        for (int i = 0 ; i < All.size(); i++)
+            All.at(i)->setEnabled(true);
+    }
+    emit emergency_sig();
+}
+
+
+//Slots supplémentaires
+
 
 void MainWindow::control_open_door(bool * status, int porte)
 {
@@ -392,110 +876,7 @@ void MainWindow::arret_door(bool * status,int id)
     }
 }
 
-void MainWindow::on_Ouvrir_Porte_amont_clicked()
-{
-    if (mode_auto)
-    {
-        ui->Ouvrir_Vanne_remplissage->setChecked(false);
-        ui->Ouvrir_Vanne_vidage->setChecked(false);
-//        ui->Ouvrir_Porte_amont->setChecked(false);
-        std::cout << " entre porte amont clicked" << std::endl;
-        if(niveau_eau == 1) // on peut rien faire
-            return; // faire un pop-up
-        else if (niveau_eau == 0) // en bas -> ouvrir la porte d'en-bas
-        {
-            std::cout << " en-bas " << std::endl;
-            mode_auto = false;
-            if (porte_aval_stat == 1 || porte_aval_stat == 3)
-            {
-                std::cout << "Porte déjà ouverte" << std::endl;
-                ui->Ouvrir_Porte_aval->setChecked(false);
-                unblock_interface(); // pb pas cii
-            }
-            else
-            {
-                on_Ouvrir_Porte_aval_clicked();
-                ui->Ouvrir_Porte_aval->setChecked(false);
-                block_interface();
-            }
-//            ui->Ouvrir_Porte_aval->setChecked(true);
-            mode_auto = true;
-        }
-        else if(niveau_eau == 2)
-        {
-            mode_auto = false;
-            if (porte_amont_stat == 1 || porte_amont_stat == 3)
-            {
-                std::cout << "Porte déjà ouverte" << std::endl;
-                ui->Ouvrir_Porte_aval->setChecked(false);// pb pas ici
-                unblock_interface();
-            }
-            else
-            {
-                on_Ouvrir_Porte_amont_clicked();
-                ui->Ouvrir_Porte_aval->setChecked(false);
-                block_interface();
-            }
-//            ui->Ouvrir_Porte_amont->setChecked(true);
-            mode_auto = true;
-        }
-    }
-    else
-    {
-        if( niveau_eau == 0 || niveau_eau == 1 || transit_vanne_remplissage || transit_vanne_vidage)
-        {
-            std::cout << "Niveau eau pas bon !!" << std::endl;
-            ui->Ouvrir_Porte_amont->setChecked(false);
-            ui->Fermer_Porte_amont->setChecked(true);
-            return;
-        }
-        if (porte_amont_stat == 1 || porte_amont_stat == 3)
-        {
-            std::cout << "Porte déjà ouverte" << std::endl;
-            ui->Ouvrir_Porte_amont->setChecked(true);
-            return ;
-        }
-
-        emit show_state_sig(0,0) ; // Ouverture
-    }
-
-}
-
-
-void MainWindow::on_Fermer_Porte_amont_clicked()
-{
-    if (porte_amont_stat == 0 || porte_amont_stat == 2)
-    {
-        std::cout << "Porte amont déjà fermée !" << std::endl;
-        ui->Fermer_Porte_amont->setChecked(true);
-        if(mode_auto)
-        {std::cout << "Porte amont déjà fermée !" << std::endl;
-            mode_auto=false;
-            on_Ouvrir_Vanne_vidage_clicked();
-            ui->Ouvrir_Vanne_vidage->setChecked(true);
-            mode_auto=true;
-            unblock_interface(); // pb pas ici
-        }
-        return ;
-    }
-
-    emit show_state_sig(1,0) ;
-}
-
-
-
-void MainWindow::on_Arret_Porte_Amont_clicked()
-{
-    if (porte_amont_stat == 4)
-    {
-        std::cout << "Porte déjà arrêtée" << std::endl;
-        ui->Arret_Porte_Amont->setChecked(true);
-        return ;
-    }
-    emit show_state_sig(2,0) ;
-}
-
-// fonciton à laquelle on envoie les signaux réguliers et qui contrôle si tout se passe comme prévu
+// fonction à laquelle on envoie les signaux réguliers et qui contrôle si tout se passe comme prévu
 void MainWindow::Controle_door(int etat, int id)
 {
     if (id == 0)
@@ -532,213 +913,6 @@ void MainWindow::position(int pos, int id)
 
     std::cout << QString::number(pos).toStdString() << std::endl;
     ui->Barre_de_transition->setValue(max);
-}
-
-
-void MainWindow::on_URGENCE_clicked()
-{
-    emergency_status = !emergency_status;
-
-    if(emergency_status)
-    {
-        if (porte_aval_stat == 2 || porte_aval_stat == 3)
-        {
-            ui->Fermer_Porte_aval->setChecked((false));
-            ui->Ouvrir_Porte_aval->setChecked((false));
-            ui->Arret_Porte_Aval->setChecked((true));
-            porte_aval_stat = 4;
-        }
-        if (porte_amont_stat == 2 || porte_amont_stat == 3)
-        {
-            ui->Fermer_Porte_amont->setChecked((false));
-            ui->Ouvrir_Porte_amont->setChecked((false));
-            ui->Arret_Porte_Amont->setChecked((true));
-            porte_amont_stat = 4;
-        }
-
-        on_Fermer_Vanne_remplissage_clicked(); // fermeture vanne remplissage
-        ui->Fermer_Vanne_remplissage->setChecked(true);
-        on_Fermer_Vanne_vidage_clicked(); // fermeture vanne vidage
-        ui->Fermer_Vanne_vidage->setChecked(true);
-
-        on_Feu_amont_rouge_clicked();
-        on_Feu_aval_rouge_clicked();
-        ui->Feu_aval_vert->setChecked(false);
-        ui->Feu_aval_rouge->setChecked(true);
-        ui->Feu_amont_vert->setChecked(false);
-        ui->Feu_amont_rouge->setChecked(true);
-
-        QList<QWidget*> All = ui->centralWidget->findChildren<QWidget *>();
-        for (int i = 0 ; i < All.size(); i++)
-            All.at(i)->setDisabled(true);
-        ui->horizontalLayoutWidget->setEnabled(true);
-        ui->URGENCE->setEnabled(true);
-        ui->Saisie_ID->setEnabled(true);
-        ui->Saisie_MdP->setEnabled(true);
-        ui->De_connexion->setEnabled(true);
-
-    }
-    else if (!mode_auto)
-    {
-        QList<QWidget*> All = ui->centralWidget->findChildren<QWidget *>();
-        for (int i = 0 ; i < All.size(); i++)
-            All.at(i)->setEnabled(true);
-    }
-    emit emergency_sig();
-}
-
-
-void MainWindow::on_Ouvrir_Porte_aval_clicked()
-{
-    if (mode_auto)
-    {
-        ui->Ouvrir_Vanne_remplissage->setChecked(false);
-        ui->Ouvrir_Vanne_vidage->setChecked(false);
-//        ui->Ouvrir_Porte_aval->setChecked(false);
-        std::cout << " mode auto " << std::endl;
-        if(niveau_eau == 1) // on peut rien faire
-        {
-            std::cout << " milieu " << std::endl;
-            return; // faire un pop-up
-        }
-        else if (niveau_eau == 0) // en bas -> ouvrir la porte d'en-bas
-        {
-            std::cout << " en-bas " << std::endl;
-            mode_auto = false;
-            if (porte_aval_stat == 1 || porte_aval_stat == 3)
-            {
-                std::cout << "Porte déjà ouverte yayaya" << std::endl;
-                unblock_interface(); // pb pas ici
-                ui->Ouvrir_Porte_amont->setChecked(false);
-            }
-            else
-            {
-                on_Ouvrir_Porte_aval_clicked();
-                ui->Ouvrir_Porte_amont->setChecked(false);
-                block_interface();
-            }
-//            ui->Ouvrir_Porte_aval->setChecked(true);
-            mode_auto = true;
-        }
-        else if(niveau_eau == 2)
-        {
-            mode_auto = false;
-            if (porte_amont_stat == 1 || porte_amont_stat == 3)
-            {
-                std::cout << "Porte déjà ouverte" << std::endl;
-                unblock_interface(); // pb pas ici
-                ui->Ouvrir_Porte_amont->setChecked(false);
-            }
-            else
-            {
-                on_Ouvrir_Porte_amont_clicked();
-                ui->Ouvrir_Porte_amont->setChecked(false);
-                block_interface();
-            }
-//            ui->Ouvrir_Porte_amont->setChecked(true);
-            mode_auto = true;
-        }
-    }
-    else
-    {
-        if(niveau_eau == 1 || niveau_eau == 2 || transit_vanne_remplissage || transit_vanne_vidage)
-        {
-            std::cout << "Niveau eau pas bon" << std::endl;
-            ui->Ouvrir_Porte_aval->setChecked(false);
-            ui->Fermer_Porte_aval->setChecked(true);
-            return;
-        }
-        if (porte_aval_stat == 1 || porte_aval_stat == 3)
-        {
-            std::cout << "Porte déjà ouverte" << std::endl;
-            ui->Ouvrir_Porte_aval->setChecked(true);
-            return ;
-        }
-
-        emit show_state_sig(0,1) ; // Ouverture
-    }
-}
-
-void MainWindow::on_Fermer_Porte_aval_clicked()
-{
-    if (porte_aval_stat == 0 || porte_aval_stat == 2)
-    {
-        std::cout << "Porte aval déjà fermée" << std::endl;
-        ui->Fermer_Porte_aval->setChecked(true);
-        if(mode_auto)
-        {
-            mode_auto=false;
-            on_Ouvrir_Vanne_remplissage_clicked();
-            ui->Ouvrir_Vanne_remplissage->setChecked(true);
-            mode_auto=true;
-            unblock_interface(); // pb pas ici
-        }
-        return ;
-    }
-    emit show_state_sig(1,1) ;
-}
-
-
-void MainWindow::on_Arret_Porte_Aval_clicked()
-{
-    if (porte_aval_stat == 4)
-    {
-        std::cout << "Porte déjà arrêtée" << std::endl;
-        ui->Arret_Porte_Aval->setChecked(true);
-        return ;
-    }
-    emit show_state_sig(2,1) ;
-}
-
-void MainWindow::on_Ouvrir_Vanne_remplissage_clicked()
-{
-    if(mode_auto)
-    {
-        ui->Ouvrir_Vanne_vidage->setChecked(false);
-        mode_auto = false;
-        on_Fermer_Vanne_vidage_clicked();
-        mode_auto = true;
-        vanne_vidage_stat = 0;
-        ui->Ouvrir_Porte_aval->setChecked(false);
-        ui->Ouvrir_Porte_amont->setChecked(false);
-        std::cout << " mode auto remplissage" << std::endl;
-        if(niveau_eau == 1) // on peut rien faire
-        {
-            std::cout << " milieu " << std::endl;
-            return; // faire un pop-up
-        }
-        else if (niveau_eau == 0) // en bas -> ouvrir la porte d'en-bas
-        {
-            std::cout << " en-bas " << std::endl;
-            on_Feu_aval_rouge_clicked();
-            ui->Feu_aval_rouge->setChecked(true);
-            std::cout << "je suis là " << std::endl;
-            on_Fermer_Porte_aval_clicked();
-            block_interface();
-        }
-        else if(niveau_eau == 2)
-        {
-            std::cout << "déjà en haut" << std::endl;
-            ui->Ouvrir_Vanne_remplissage->setChecked(true);
-        }
-    }
-    else
-    {
-        if(porte_aval_stat == 1 || porte_aval_stat== 3)
-        {
-            std::cout << "Porte aval ouverte !!" << std::endl;
-            ui->Ouvrir_Vanne_remplissage->setChecked(false);
-            return;
-        }
-        if(vanne_remplissage_stat == 1) // vanne open
-        {
-            std::cout << "Vanne déjà remplie" << std::endl;
-            ui->Ouvrir_Vanne_remplissage->setChecked(true);
-            return ;
-        }
-        ui->Transition_Vanne_remplissage->setChecked(true);
-        emit show_state_vanne_sig(0,1);
-    }
 }
 
 void MainWindow::control_open_vanne(bool * status, int vanne)
@@ -799,7 +973,6 @@ void MainWindow::control_open_vanne(bool * status, int vanne)
     }
 }
 
-
 void MainWindow::open_vanne(int state,int id)
 {
     if (state == 1 )
@@ -841,18 +1014,6 @@ void MainWindow::close_vanne(int state)
     else
         std::cout << "error" << std::endl;
 }
-
-void MainWindow::on_Fermer_Vanne_remplissage_clicked()
-{
-    if(vanne_remplissage_stat == 0) // vanne fermée
-    {
-        std::cout << "Vanne déjà fermée" << std::endl;
-        ui->Fermer_Vanne_remplissage->setChecked(true);
-        return ;
-    }
-    emit show_state_vanne_sig(1,1); // demande de fermeture (1) de la vanne remplissage (2ème 1)
-}
-
 
 void MainWindow::control_close_vanne(bool * status,int vanne)
 {
@@ -907,122 +1068,6 @@ void MainWindow::control_close_vanne(bool * status,int vanne)
     }
 }
 
-
-void MainWindow::on_Ouvrir_Vanne_vidage_clicked()
-{
-    if(mode_auto)
-    {
-        ui->Ouvrir_Vanne_remplissage->setChecked(false);
-        mode_auto = false;
-        on_Fermer_Vanne_remplissage_clicked();
-        mode_auto = true;
-        vanne_remplissage_stat = 0;
-        ui->Ouvrir_Porte_aval->setChecked(false);
-        ui->Ouvrir_Porte_amont->setChecked(false);
-        std::cout << " mode auto " << std::endl;
-        if(niveau_eau == 1) // on peut rien faire
-            return; // faire un pop-up
-        else if (niveau_eau == 0) // en bas -> ouvrir la porte d'en-bas
-        {
-            std::cout << "déjà en-bas " << std::endl;
-            ui->Ouvrir_Vanne_vidage->setChecked(true);
-        }
-        else if(niveau_eau == 2)
-        {
-            on_Feu_amont_rouge_clicked();
-            ui->Feu_amont_rouge->setChecked(true);
-            on_Fermer_Porte_amont_clicked();
-            block_interface();
-            std::cout << "je bloque tout" << std::endl;
-        }
-    }
-    else
-    {
-        if(porte_amont_stat == 1 || porte_amont_stat== 3)
-        {
-            std::cout << "Porte amont ouverte !!" << std::endl;
-            ui->Ouvrir_Vanne_vidage->setChecked(false);
-            return;
-        }
-        if(vanne_vidage_stat == 1) // vanne open
-        {
-            std::cout << "Vanne déjà remplie" << std::endl;
-            ui->Ouvrir_Vanne_vidage->setChecked(true);
-            return ;
-        }
-        std::cout << "je vais fiaree" << std::endl;
-        emit show_state_vanne_sig(0,0);
-        ui->Transition_Vanne_vidage->setChecked(true);
-    }
-
-}
-
-void MainWindow::on_Fermer_Vanne_vidage_clicked()
-{
-    if(vanne_vidage_stat == 0) // vanne fermée
-    {
-        std::cout << "Vanne déjà fermée" << std::endl;
-        ui->Fermer_Vanne_vidage->setChecked(true);
-        return ;
-    }
-    emit show_state_vanne_sig(1,0); // demande de fermeture (1) de la vanne remplissage (2ème 1)
-}
-
-
-
-void MainWindow::on_Feu_amont_vert_clicked()
-{
-    if(signal_amont_stat )
-    {
-        std::cout << "Feu amont déjà vert" << std::endl;
-        ui->Feu_amont_vert->setChecked(true);
-        return;
-    }
-    emit feu_vert(0);
-    signal_amont_stat = true;
-    ui->Feu_amont_rouge->setChecked(false);
-}
-
-void MainWindow::on_Feu_amont_rouge_clicked()
-{
-    if(!signal_amont_stat )
-    {
-        std::cout << "Feu amont déjà rouge" << std::endl;
-        ui->Feu_amont_rouge->setChecked(true);
-        return;
-    }
-    emit feu_rouge(0);
-    signal_amont_stat = false;
-    ui->Feu_amont_vert->setChecked(false);
-}
-
-
-void MainWindow::on_Feu_aval_rouge_clicked()
-{
-    if(!signal_aval_stat )
-    {
-        std::cout << "Feu aval déjà rouge" << std::endl;
-        ui->Feu_aval_rouge->setChecked(true);
-        return;
-    }
-    emit feu_rouge(1);
-    signal_aval_stat = false;
-    ui->Feu_aval_vert->setChecked(false);
-}
-
-void MainWindow::on_Feu_aval_vert_clicked()
-{
-    if(signal_aval_stat )
-    {
-        std::cout << "Feu aval déjà vert" << std::endl;
-        ui->Feu_aval_vert->setChecked(true);
-        return;
-    }
-    emit feu_vert(1);
-    signal_aval_stat = true;
-    ui->Feu_aval_rouge->setChecked(false);
-}
-
 void MainWindow::change_mode()
 {
     if (mode_auto) //De automatique vers manuel
@@ -1044,6 +1089,8 @@ void MainWindow::change_mode()
             ui->Transition->show();
             ui->Transition_Porte_amont->show();
             ui->Transition_Porte_aval->show();
+            ui->Transition_Vanne_remplissage->show();
+            ui->Transition_Vanne_vidage->show();
             ui->Etat->show();
             ui->Panne->show();
             ui->Porte_amont->show();
@@ -1108,6 +1155,8 @@ void MainWindow::change_mode()
         ui->Transition->hide();
         ui->Transition_Porte_amont->hide();
         ui->Transition_Porte_aval->hide();
+        ui->Transition_Vanne_remplissage->hide();
+        ui->Transition_Vanne_vidage->hide();
         ui->Etat->hide();
         ui->Panne->hide();
         ui->Porte_amont->hide();
@@ -1149,7 +1198,6 @@ void MainWindow::change_mode()
 
 }
 
-
 void MainWindow::block_interface()
 {
     QList<QWidget*> All = ui->centralWidget->findChildren<QWidget *>();
@@ -1170,44 +1218,3 @@ void MainWindow::unblock_interface()
     ui->Feu_aval_vert->setEnabled(false);
 }
 
-void MainWindow::on_Panne_Vanne_remplissage_clicked()
-{
-    emit panne_vanne(1);
-    on_URGENCE_clicked();
-    ui->Panne_globale->setChecked(true);
-    ui->Panne_globale->setEnabled(true);
-}
-
-void MainWindow::on_Panne_Vanne_vidage_clicked()
-{
-    emit panne_vanne(0);
-    on_URGENCE_clicked();
-    ui->Panne_globale->setChecked(true);
-    ui->Panne_globale->setEnabled(true);
-}
-
-void MainWindow::on_Panne_Porte_aval_clicked()
-{
-    emit panne_porte(0);
-    on_URGENCE_clicked();
-    ui->Panne_globale->setChecked(true);
-    ui->Panne_globale->setEnabled(true);
-}
-
-void MainWindow::on_Panne_Porte_amont_clicked()
-{
-    emit panne_porte(1);
-    on_URGENCE_clicked();
-    ui->Panne_globale->setChecked(true);
-    ui->Panne_globale->setEnabled(true);
-}
-
-void MainWindow::on_Panne_globale_clicked()
-{
-    emit sortie_panne_sig();
-    on_URGENCE_clicked();
-    ui->Panne_Porte_amont->setChecked(false);
-    ui->Panne_Porte_aval->setChecked(false);
-    ui->Panne_Vanne_remplissage->setChecked(false);
-    ui->Panne_Vanne_vidage->setChecked(false);
-}

@@ -22,7 +22,7 @@ public:
 
 
     //Méthodes
-    Porte(int);                                 //Constructeur
+    Porte(int id);                              //Constructeur
     ~Porte();                                   //Destructeur
     void connexion (QMainWindow *W);            //Fonction regroupant tous les connects
     void run();                                 //Fonction de lancement du thread en boucle
@@ -37,7 +37,7 @@ public slots:
     void update_open_door();                    //Slot de mise à jour de l'état de la porte pendant l'ouverture de celle-ci
     void update_close_door();                   //Slot de mise à jour de l'état de la porte pendant la fermeture de celle-ci
     void arret_porte();                         //Slot d'arrêt immédiat de la porte
-    void emergency_event(void );                //Slot de passage en état d'urgence
+    void emergency_event(void);                 //Slot de gesttion de l'état d'urgence
     void panne(int);                            //Slot de passage en état de panne
     void sortie_panne();                        //Slot de sorte de panne (reprise sur panne)
 

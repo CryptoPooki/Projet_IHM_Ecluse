@@ -1,16 +1,18 @@
+//Bibliothèques nécessaires
 #include "Modèle/Vanne.h"
 #include <QEventLoop>
 #include <QMainWindow>
 #include <iostream>
 #include <QTimer>
+/////////////////////////////////////    Méthodes     ///////////////////////////////////////////
 //Constructeur
 Vanne::Vanne(int id)
 {
-    is_open = false;       //vanne initialement fermée
-    emergency_status = false;
+    Vanneid = id;               //ID de la vanne
+    is_open = false;            //vanne initialement fermée
+    emergency_status = false;   //État de fonctionnement normal
     breakdown_status = false;
     alarm_status = false;
-    Vanneid = id;
     transition = 100;
 }
 
@@ -25,6 +27,17 @@ void Vanne::run()
     loop.exec();
 }
 
+
+void Vanne::connexion(QMainWindow* W)
+{
+    connect(W, SIGNAL(show_state_vanne_sig(int,int)), this, SLOT(show_state(int,int))  );
+    connect(W, SIGNAL(change_vanne_sig(int,int)), this, SLOT(vanne_change_state(int,int))  );
+    connect(W, SIGNAL(emergency_sig()), this, SLOT(emergency_event(void )));
+    connect(W, SIGNAL(panne_vanne(int)), this, SLOT(panne(int))  );
+    connect(W, SIGNAL(sortie_panne_sig()), this, SLOT(sortie_panne())  );
+}
+
+/////////////////////////////////////    Slots       ///////////////////////////////////////////
 //Renvoie des états
 void Vanne::show_state(int i,int id)
 {
@@ -39,19 +52,29 @@ void Vanne::show_state(int i,int id)
 
 }
 
-void Vanne::connexion(QMainWindow* W)
+void Vanne::vanne_change_state(int state, int id )
 {
-    connect(W, SIGNAL(show_state_vanne_sig(int,int)), this, SLOT(show_state(int,int))  );
-    connect(W, SIGNAL(change_vanne_sig(int,int)), this, SLOT(vanne_change_state(int,int))  );
-    connect(W, SIGNAL(emergency_sig()), this, SLOT(emergency_event(void )));
-    connect(W, SIGNAL(panne_vanne(int)), this, SLOT(panne(int))  );
-    connect(W, SIGNAL(sortie_panne_sig()), this, SLOT(sortie_panne())  );
-}
+    if(id!=Vanneid)
+        return;
+    is_open = !is_open;
 
-void Vanne::panne(int id)
-{
-    if (id == Vanneid)
-        breakdown_status = !breakdown_status;
+    timer = new QTimer();
+    if (state == 0)
+    {
+        connect(timer, SIGNAL(timeout()), this, SLOT(update_open_vanne()));
+    }
+    else
+    {
+        connect(timer, SIGNAL(timeout()), this, SLOT(update_close_vanne()));
+    }
+    timer->start(1000);
+
+    /*
+    if(state == 0)
+        emit open_vanne_sig(1,id);
+    else if (state == 1)
+        emit close_vanne_sig(0,id);
+        */
 }
 
 void Vanne::update_open_vanne()
@@ -84,34 +107,6 @@ void Vanne::update_close_vanne()
     }
 }
 
-void Vanne::vanne_change_state(int state, int id )
-{
-
-    if(id!=Vanneid)
-        return;
-    is_open = !is_open;
-
-    timer = new QTimer();
-    if (state == 0)
-    {
-        connect(timer, SIGNAL(timeout()), this, SLOT(update_open_vanne()));
-    }
-    else
-    {
-        connect(timer, SIGNAL(timeout()), this, SLOT(update_close_vanne()));
-    }
-    timer->start(1000);
-
-    /*
-    if(state == 0)
-        emit open_vanne_sig(1,id);
-    else if (state == 1)
-        emit close_vanne_sig(0,id);
-        */
-}
-
-
-
 void Vanne::emergency_event(void )
 {
     if(!emergency_status)
@@ -124,8 +119,13 @@ void Vanne::emergency_event(void )
 
 }
 
-void Vanne::sortie_panne()
+void Vanne::panne(int id)
 {
-    breakdown_status = false;
+    if (id == Vanneid)
+        breakdown_status = !breakdown_status;               //Mis en état de panne
 }
 
+void Vanne::sortie_panne()
+{
+    breakdown_status = false;                               //Reprise sur panne
+}

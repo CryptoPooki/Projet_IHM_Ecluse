@@ -20,7 +20,7 @@ public:
     QTimer * timer;                             //Timer necessaire pour (au moins) implémenter l'ouverture de la porte en 10s
 
     //Méthodes
-    Vanne(int);                                 //Constructeur
+    Vanne(int id);                              //Constructeur
     ~Vanne();                                   //Destructeur
     void connexion (QMainWindow *W);            //Fonction regroupant tous les connects
     void run();                                 //Fonction de lancement du thread en boucle

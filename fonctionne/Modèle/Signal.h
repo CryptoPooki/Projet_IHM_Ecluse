@@ -17,7 +17,7 @@ public:
     bool red;                       //Lampe/Diode rouge
 
     //Méthodes
-    Signal(int);                    //Constructeur
+    Signal(int id);                 //Constructeur
     ~Signal();                      //Destructeur
     void connexion(QMainWindow *W); //Fonction regroupant tous les connects
 

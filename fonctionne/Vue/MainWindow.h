@@ -13,7 +13,7 @@ class MainWindow;
 //Configuration par défaut de QtCreator
 class MainWindow : public QMainWindow
 {
-    Q_OBJECT
+    Q_OBJECT                                    //
 
 public:
     //Attributs
@@ -39,6 +39,8 @@ public:
     int transit_vanne_vidage;
 
     //Méthodes                                  //Pas de méthodes
+    explicit MainWindow(QWidget *parent = 0);
+    ~MainWindow();
 
     //Slots
 private slots:
@@ -104,8 +106,4 @@ signals:
     void sortie_panne_sig();
 };
 
-
-
 #endif // MAINWINDOW_H
-
-
